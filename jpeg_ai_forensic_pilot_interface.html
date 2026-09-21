@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JPEG AI Forensic Pilot Interface</title>
+<style>
+  :root{
+    --bg:#f6f8fb; --panel:#ffffff; --panel-2:#eef3fb; --text:#1a2233; --muted:#5b6478;
+    --accent:#1f3864; --accent-2:#5b2d8e; --ok:#2e6b2e; --warn:#a11d1d; --border:#d8e0ee;
+    --code-bg:#f2f2f2; --shadow: 0 1px 3px rgba(20,30,60,.08), 0 1px 2px rgba(20,30,60,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12151c; --panel:#1a1f2b; --panel-2:#20263a; --text:#e7ecf7; --muted:#a6afc6;
+      --accent:#8fb2ff; --accent-2:#c9a6ff; --ok:#7fd894; --warn:#ff9b9b; --border:#2b3348;
+      --code-bg:#151a26; --shadow: 0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#12151c; --panel:#1a1f2b; --panel-2:#20263a; --text:#e7ecf7; --muted:#a6afc6;
+    --accent:#8fb2ff; --accent-2:#c9a6ff; --ok:#7fd894; --warn:#ff9b9b; --border:#2b3348;
+    --code-bg:#151a26; --shadow: 0 1px 3px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height:1.45;
+  }
+  header{
+    padding:18px 20px 14px; border-bottom:1px solid var(--border); background:var(--panel);
+  }
+  header h1{ margin:0 0 4px; font-size:1.32rem; }
+  header p{ margin:0; color:var(--muted); font-size:.88rem; max-width:900px; }
+  .wrap{ max-width:1180px; margin:0 auto; padding:16px; }
+  .tabs{ display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+  .tab-btn{
+    padding:8px 14px; border-radius:8px 8px 0 0; border:1px solid var(--border); border-bottom:none;
+    background:var(--panel-2); color:var(--muted); cursor:pointer; font-size:.86rem; font-weight:600;
+  }
+  .tab-btn.active{ background:var(--panel); color:var(--accent); border-bottom:2px solid var(--panel); }
+  .panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow);
+    padding:18px; margin-bottom:16px;
+  }
+  .grid2{ display:grid; grid-template-columns: 300px 1fr; gap:18px; }
+  @media (max-width:820px){ .grid2{ grid-template-columns:1fr; } }
+  label{ display:block; font-size:.78rem; font-weight:600; color:var(--muted); margin:12px 0 4px; }
+  input[type=file]{ font-size:.8rem; width:100%; }
+  input[type=range]{ width:100%; }
+  .rangeval{ font-size:.76rem; color:var(--accent); font-weight:700; }
+  button.primary{
+    margin-top:16px; width:100%; padding:10px 14px; border:none; border-radius:8px;
+    background:var(--accent); color:#fff; font-weight:700; font-size:.88rem; cursor:pointer;
+  }
+  button.secondary{
+    padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:var(--panel-2);
+    color:var(--text); font-weight:600; font-size:.8rem; cursor:pointer; margin-right:8px; margin-top:8px;
+  }
+  button:disabled{ opacity:.5; cursor:not-allowed; }
+  .imgrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
+  @media (max-width:700px){ .imgrid{ grid-template-columns:repeat(2,1fr); } }
+  figure{ margin:0; background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:6px; }
+  figure canvas{ width:100%; height:auto; display:block; border-radius:4px; background:#000; image-rendering:pixelated; }
+  figcaption{ font-size:.68rem; color:var(--muted); text-align:center; margin-top:4px; }
+  .metrics{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  @media (max-width:700px){ .metrics{ grid-template-columns:repeat(2,1fr); } }
+  .metric{ background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+  .metric .k{ font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+  .metric .v{ font-size:1.15rem; font-weight:700; color:var(--accent); }
+  table{ width:100%; border-collapse:collapse; font-size:.78rem; margin-top:10px; }
+  th,td{ padding:6px 8px; border-bottom:1px solid var(--border); text-align:center; }
+  th{ background:var(--panel-2); color:var(--muted); font-size:.7rem; text-transform:uppercase; }
+  tr.avg td{ font-weight:700; background:var(--panel-2); }
+  .note{ font-size:.78rem; color:var(--muted); background:var(--panel-2); border:1px dashed var(--border);
+    border-radius:8px; padding:10px 12px; margin-top:10px; }
+  .pill{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:.68rem; font-weight:700; }
+  .pill.impl{ background:rgba(46,107,46,.15); color:var(--ok); }
+  .pill.notimpl{ background:rgba(161,29,29,.15); color:var(--warn); }
+  .diagram{ display:flex; align-items:center; gap:6px; overflow-x:auto; padding:10px 2px; }
+  .dnode{ min-width:120px; flex:0 0 auto; border-radius:8px; padding:8px 10px; font-size:.68rem; text-align:center;
+    border:1px solid var(--border); }
+  .dnode.on{ background:rgba(31,56,100,.12); border-color:var(--accent); color:var(--accent); font-weight:700; }
+  .dnode.off{ background:rgba(161,29,29,.08); border-color:var(--warn); color:var(--warn); }
+  .darrow{ color:var(--muted); font-size:1rem; flex:0 0 auto; }
+  .status{ font-size:.8rem; color:var(--muted); margin-top:8px; min-height:1.2em; }
+  a{ color:var(--accent); }
+  .eq{ font-family:"Cambria Math","Times New Roman",serif; font-style:italic; background:var(--panel-2);
+    border-radius:6px; padding:6px 10px; display:inline-block; margin:4px 0; font-size:.85rem; }
+  h3{ font-size:1rem; margin:18px 0 8px; }
+  ul{ font-size:.85rem; color:var(--text); }
+  .foot{ text-align:center; color:var(--muted); font-size:.72rem; margin:24px 0 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔍 JPEG AI Forensic Pilot Interface</h1>
+  <p>Interactive implementation of the <strong>pixel-domain (Class B) branch</strong> of the proposed dual-branch forensic
+  framework — Algorithm&nbsp;1 (tamper-sample generation), Algorithm&nbsp;2 (ELA-style D<sub>pix</sub> detection &amp;
+  localization), and Algorithm&nbsp;3 (batch evaluation loop). Runs entirely in your browser.</p>
+</header>
+
+<div class="wrap">
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="single">Single-Image Analysis</button>
+    <button class="tab-btn" data-tab="batch">Batch Result-Set (Tables 1–2)</button>
+    <button class="tab-btn" data-tab="about">Method &amp; Coverage Notes</button>
+  </div>
+
+  <!-- ============ SINGLE IMAGE TAB ============ -->
+  <div class="tabview" id="tab-single">
+    <div class="panel grid2">
+      <div>
+        <h3 style="margin-top:0;">Controls</h3>
+        <label for="fileA">Image x (required)</label>
+        <input type="file" id="fileA" accept="image/*">
+
+        <label for="fileB">Donor image x_d (optional — a synthetic donor is generated if omitted)</label>
+        <input type="file" id="fileB" accept="image/*">
+
+        <label>JPEG-proxy quality q <span class="rangeval" id="qVal">75</span></label>
+        <input type="range" id="qSlider" min="10" max="95" value="75">
+
+        <label>Tamper patch fraction p <span class="rangeval" id="pVal">0.18</span></label>
+        <input type="range" id="pSlider" min="5" max="40" value="18">
+
+        <label>ELA threshold percentile τ <span class="rangeval" id="tVal">92</span></label>
+        <input type="range" id="tSlider" min="80" max="99" value="92">
+
+        <label><input type="checkbox" id="seedLock" style="width:auto;vertical-align:middle;"> Lock random seed (reproducible patch location)</label>
+
+        <button class="primary" id="runSingle" disabled>Run Pipeline (Algorithms 1–2)</button>
+        <div class="status" id="statusSingle"></div>
+      </div>
+
+      <div>
+        <h3 style="margin-top:0;">Result</h3>
+        <div class="imgrid" id="imgGridSingle">
+          <figure><canvas id="cvA" width="256" height="256"></canvas><figcaption>(a) Decoded image x̂</figcaption></figure>
+          <figure><canvas id="cvB" width="256" height="256"></canvas><figcaption>(b) Class B tampered (post-decode splice)</figcaption></figure>
+          <figure><canvas id="cvC" width="256" height="256"></canvas><figcaption>(c) Ground-truth mask M</figcaption></figure>
+          <figure><canvas id="cvD" width="256" height="256"></canvas><figcaption>(d) Predicted mask M̂ (ELA, Eq. 6)</figcaption></figure>
+        </div>
+        <div class="metrics" id="metricsSingle">
+          <div class="metric"><div class="k">PSNR (x, x̂)</div><div class="v" id="mPsnr">–</div></div>
+          <div class="metric"><div class="k">Bitrate (proxy, bpp)</div><div class="v" id="mBpp">–</div></div>
+          <div class="metric"><div class="k">PSNR after tamper</div><div class="v" id="mPsnrT">–</div></div>
+          <div class="metric"><div class="k">Precision</div><div class="v" id="mPrec">–</div></div>
+          <div class="metric"><div class="k">Recall</div><div class="v" id="mRec">–</div></div>
+          <div class="metric"><div class="k">F1 / IoU</div><div class="v" id="mF1Iou">–</div></div>
+        </div>
+        <div class="note">All quantities computed with the equations from the paper: PSNR — Eq. (4); Class B splice — Algorithm 1;
+          ELA difference map and mask — Eq. (6); Precision / Recall / F1 / IoU — Eq. (9). The browser's native JPEG codec
+          is used as the explicitly labeled proxy for the JPEG AI analysis/synthesis transforms g<sub>a</sub>, g<sub>s</sub>
+          (see the Method tab and Section 5 of the paper).</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ BATCH TAB ============ -->
+  <div class="tabview" id="tab-batch" style="display:none;">
+    <div class="panel">
+      <h3 style="margin-top:0;">Batch controls</h3>
+      <label for="filesBatch">Upload 2–40 images (each is used as both a target and, shifted by half the set size, as another image's donor — reproducing Algorithm 3's pairing)</label>
+      <input type="file" id="filesBatch" accept="image/*" multiple>
+      <div style="display:flex; gap:24px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:200px;">
+          <label>JPEG-proxy quality q <span class="rangeval" id="qValB">75</span></label>
+          <input type="range" id="qSliderB" min="10" max="95" value="75">
+        </div>
+        <div style="flex:1; min-width:200px;">
+          <label>Tamper patch fraction p <span class="rangeval" id="pValB">0.18</span></label>
+          <input type="range" id="pSliderB" min="5" max="40" value="18">
+        </div>
+        <div style="flex:1; min-width:200px;">
+          <label>ELA threshold percentile τ <span class="rangeval" id="tValB">92</span></label>
+          <input type="range" id="tSliderB" min="80" max="99" value="92">
+        </div>
+      </div>
+      <button class="primary" id="runBatch" disabled>Run Batch (Algorithm 3)</button>
+      <div class="status" id="statusBatch"></div>
+    </div>
+
+    <div class="panel" id="batchResultsPanel" style="display:none;">
+      <h3 style="margin-top:0;">Result set</h3>
+      <div style="overflow-x:auto;">
+        <table id="batchTable">
+          <thead>
+            <tr><th>#</th><th>Image</th><th>PSNR (dB)</th><th>Bitrate (bpp)</th><th>PSNR after tamper (dB)</th><th>F1</th><th>IoU</th></tr>
+          </thead>
+          <tbody id="batchTbody"></tbody>
+        </table>
+      </div>
+      <button class="secondary" id="dlCsv">⬇ Download CSV</button>
+      <button class="secondary" id="dlJson">⬇ Download JSON</button>
+    </div>
+  </div>
+
+  <!-- ============ ABOUT TAB ============ -->
+  <div class="tabview" id="tab-about" style="display:none;">
+    <div class="panel">
+      <h3 style="margin-top:0;">What this interface implements</h3>
+      <p>This tool is the interactive counterpart to the pilot feasibility study (Section 5) of
+      <em>“Forensic Integrity and Tamper Localization in JPEG AI-Compressed Images.”</em> It covers only the
+      legitimate encode/decode path and the <strong>Class B (pixel-domain)</strong> threat branch of the full
+      framework (Fig. 1). Coverage relative to the full proposed system:</p>
+      <div class="diagram">
+        <div class="dnode on">Pristine image x</div><div class="darrow">→</div>
+        <div class="dnode on">JPEG-proxy encode/decode<br>(stand-in for g<sub>a</sub>, g<sub>s</sub>)</div><div class="darrow">→</div>
+        <div class="dnode on">Decoded image x̂</div><div class="darrow">→</div>
+        <div class="dnode on">Class B splice<br>(Algorithm 1)</div><div class="darrow">→</div>
+        <div class="dnode on">D<sub>pix</sub> ELA detector<br>(Eq. 6, Algorithm 2)</div><div class="darrow">→</div>
+        <div class="dnode on">F1 / IoU (Eq. 9)</div>
+      </div>
+      <div class="diagram">
+        <div class="dnode off">Class C latent-domain splice (Eq. 5)</div><div class="darrow">✕</div>
+        <div class="dnode off">D<sub>lat</sub> latent-aware detector</div><div class="darrow">✕</div>
+        <div class="dnode off">Dual-branch fusion (Eq. 7–8)</div>
+      </div>
+      <p><span class="pill impl">Implemented</span> legitimate path, Class B tamper, D<sub>pix</sub> baseline, all Section 5 metrics.
+      &nbsp; <span class="pill notimpl">Not implemented</span> Class C latent-domain tampering and the latent-aware
+      detector D<sub>lat</sub>, because both require access to the actual JPEG AI encoder/decoder internals (g<sub>a</sub>,
+      g<sub>s</sub>, the hyperprior entropy model), which cannot run inside a browser page. A future version could add
+      these once a WebAssembly build of the JPEG AI reference software exists.</p>
+
+      <h3>Why a proxy codec?</h3>
+      <p>Exactly as in the paper's pilot study, this interface substitutes the browser's built-in, standards-based JPEG
+      encoder (<code>canvas.toDataURL('image/jpeg', q)</code>) for the JPEG AI analysis/synthesis transforms
+      g<sub>a</sub>, g<sub>s</sub> of Eq. (1)–(2). All reported PSNR, F1 and IoU numbers are therefore
+      <strong>conventional-codec proxy numbers</strong>, not JPEG AI performance figures — they demonstrate that the
+      evaluation pipeline (Algorithms 1–3) runs correctly and reproducibly, exactly as intended in Section 5 of the paper.</p>
+
+      <h3>Equations used</h3>
+      <div class="eq">PSNR(x,x̂) = 10·log₁₀(255² / MSE)</div><br>
+      <div class="eq">Δ(i,j) = |x̂(i,j) − Dec(Enc(x̂; q'))(i,j)|,  M̂ = 𝟙[Δ ≥ τ]</div><br>
+      <div class="eq">F1 = 2·Precision·Recall / (Precision+Recall),  IoU = |M̂∩M| / |M̂∪M|</div>
+
+      <h3>Limitations</h3>
+      <ul>
+        <li>Results depend on the browser's own JPEG encoder implementation and are not bit-exact reproducible across browsers.</li>
+        <li>Only rectangular copy-splice tamper is simulated (Algorithm 1, Class B); inpainting/generative edits are out of scope here.</li>
+        <li>The ELA baseline is intentionally the simple, closed-form detector of Eq. (6) — it is expected to perform
+        modestly (see the paper's Table 2), motivating the learned detectors proposed in Section 4.5.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot">Client-side only — no image data leaves your browser. Companion tool to the JPEG AI forensic-framework paper (Algorithms 1–3).</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const SIZE = 256;
+
+  // ---------- tabs ----------
+  document.querySelectorAll(".tab-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      document.querySelectorAll(".tabview").forEach(v=>v.style.display="none");
+      document.getElementById("tab-"+btn.dataset.tab).style.display="block";
+    });
+  });
+
+  // ---------- helpers ----------
+  function fileToImage(file){
+    return new Promise((resolve,reject)=>{
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = ()=>{ URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = (e)=>{ URL.revokeObjectURL(url); reject(e); };
+      img.src = url;
+    });
+  }
+
+  function drawCover(img, size){
+    const c = document.createElement("canvas");
+    c.width = size; c.height = size;
+    const ctx = c.getContext("2d");
+    const s = Math.max(size/img.width, size/img.height);
+    const w = img.width*s, h = img.height*s;
+    ctx.drawImage(img, (size-w)/2, (size-h)/2, w, h);
+    return c;
+  }
+
+  function canvasToImageData(c){ return c.getContext("2d").getImageData(0,0,c.width,c.height); }
+
+  function jpegProxyEncodeDecode(canvas, quality){
+    return new Promise((resolve)=>{
+      const dataUrl = canvas.toDataURL("image/jpeg", quality/100);
+      const approxBytes = Math.round(dataUrl.length * 3/4);
+      const img = new Image();
+      img.onload = ()=>{
+        const out = document.createElement("canvas");
+        out.width = canvas.width; out.height = canvas.height;
+        out.getContext("2d").drawImage(img,0,0);
+        resolve({ canvas: out, bytes: approxBytes });
+      };
+      img.src = dataUrl;
+    });
+  }
+
+  function psnr(idA, idB){
+    const a = idA.data, b = idB.data;
+    let se = 0, n = 0;
+    for(let i=0;i<a.length;i+=4){
+      for(let c=0;c<3;c++){ const d = a[i+c]-b[i+c]; se += d*d; n++; }
+    }
+    const mse = se/n;
+    if(mse === 0) return 99;
+    return 10*Math.log10((255*255)/mse);
+  }
+
+  function mulberry32(seed){
+    return function(){
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = (t + Math.imul(t ^ t >>> 7, 61 | t)) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function makeSyntheticDonor(size, seed){
+    const c = document.createElement("canvas");
+    c.width = size; c.height = size;
+    const ctx = c.getContext("2d");
+    const rnd = mulberry32(seed||1234);
+    const g = ctx.createLinearGradient(0,0,size,size);
+    g.addColorStop(0, `hsl(${Math.floor(rnd()*360)},60%,55%)`);
+    g.addColorStop(1, `hsl(${Math.floor(rnd()*360)},60%,35%)`);
+    ctx.fillStyle = g; ctx.fillRect(0,0,size,size);
+    for(let i=0;i<14;i++){
+      ctx.beginPath();
+      ctx.fillStyle = `hsla(${Math.floor(rnd()*360)},70%,60%,0.5)`;
+      ctx.arc(rnd()*size, rnd()*size, 10+rnd()*40, 0, Math.PI*2);
+      ctx.fill();
+    }
+    return c;
+  }
+
+  // Algorithm 1 (Class B): splice a rectangular patch from donor into target
+  function spliceTamper(targetCanvas, donorCanvas, patchFrac, rnd){
+    const size = targetCanvas.width;
+    const ph = Math.max(8, Math.round(size*patchFrac));
+    const pw = ph;
+    const x0 = Math.floor(rnd()*(size-pw));
+    const y0 = Math.floor(rnd()*(size-ph));
+    const x1 = Math.floor(rnd()*(donorCanvas.width-pw));
+    const y1 = Math.floor(rnd()*(donorCanvas.height-ph));
+
+    const out = document.createElement("canvas");
+    out.width = size; out.height = size;
+    const ctx = out.getContext("2d");
+    ctx.drawImage(targetCanvas, 0, 0);
+    ctx.drawImage(donorCanvas, x1, y1, pw, ph, x0, y0, pw, ph);
+
+    const mask = new Uint8Array(size*size);
+    for(let y=y0;y<y0+ph;y++) for(let x=x0;x<x0+pw;x++) mask[y*size+x] = 1;
+
+    return { tampered: out, mask, region:{x0,y0,pw,ph} };
+  }
+
+  // Eq. (6): ELA-style difference map + threshold
+  async function elaLocalize(tamperedCanvas, quality, pctl){
+    const { canvas: re } = await jpegProxyEncodeDecode(tamperedCanvas, quality);
+    const a = canvasToImageData(tamperedCanvas).data;
+    const b = canvasToImageData(re).data;
+    const size = tamperedCanvas.width;
+    const diff = new Float32Array(size*size);
+    for(let p=0, i=0; i<a.length; i+=4, p++){
+      diff[p] = Math.abs(a[i]-b[i]) + Math.abs(a[i+1]-b[i+1]) + Math.abs(a[i+2]-b[i+2]);
+    }
+    const sorted = Float32Array.from(diff).sort();
+    const idx = Math.min(sorted.length-1, Math.floor((pctl/100)*sorted.length));
+    const thresh = sorted[idx];
+    const mask = new Uint8Array(size*size);
+    for(let p=0;p<diff.length;p++) mask[p] = diff[p] >= thresh ? 1 : 0;
+    return mask;
+  }
+
+  // Eq. (9)
+  function prf1iou(pred, gt){
+    let tp=0, fp=0, fn=0;
+    for(let i=0;i<pred.length;i++){
+      if(pred[i] && gt[i]) tp++;
+      else if(pred[i] && !gt[i]) fp++;
+      else if(!pred[i] && gt[i]) fn++;
+    }
+    const precision = (tp+fp)>0 ? tp/(tp+fp) : 0;
+    const recall = (tp+fn)>0 ? tp/(tp+fn) : 0;
+    const f1 = (precision+recall)>0 ? 2*precision*recall/(precision+recall) : 0;
+    const union = tp+fp+fn;
+    const iou = union>0 ? tp/union : 0;
+    return { precision, recall, f1, iou };
+  }
+
+  function maskToCanvas(mask, size){
+    const c = document.createElement("canvas"); c.width=size; c.height=size;
+    const ctx = c.getContext("2d");
+    const id = ctx.createImageData(size,size);
+    for(let p=0;p<mask.length;p++){
+      const v = mask[p]?255:0;
+      id.data[p*4]=v; id.data[p*4+1]=v; id.data[p*4+2]=v; id.data[p*4+3]=255;
+    }
+    ctx.putImageData(id,0,0);
+    return c;
+  }
+
+  function drawTo(canvasEl, srcCanvas){
+    const ctx = canvasEl.getContext("2d");
+    ctx.clearRect(0,0,canvasEl.width,canvasEl.height);
+    ctx.drawImage(srcCanvas,0,0,canvasEl.width,canvasEl.height);
+  }
+
+  // Full pipeline for one (target, donor) pair. Returns metrics + canvases.
+  async function runPipeline(targetCanvas, donorCanvas, quality, patchFrac, pctl, seed){
+    const { canvas: decoded, bytes } = await jpegProxyEncodeDecode(targetCanvas, quality);
+    const psnrVal = psnr(canvasToImageData(targetCanvas), canvasToImageData(decoded));
+    const bpp = (bytes*8)/(SIZE*SIZE);
+
+    const rnd = mulberry32(seed);
+    const { tampered, mask } = spliceTamper(decoded, donorCanvas, patchFrac, rnd);
+    const { canvas: tamperedRe } = await jpegProxyEncodeDecode(tampered, quality);
+    const psnrTamper = psnr(canvasToImageData(decoded), canvasToImageData(tamperedRe));
+
+    const predMask = await elaLocalize(tamperedRe, quality, pctl);
+    const m = prf1iou(predMask, mask);
+
+    return { decoded, tampered: tamperedRe, gtMask: mask, predMask, psnrVal, bpp, psnrTamper, ...m };
+  }
+
+  // ---------- SINGLE IMAGE TAB ----------
+  let imgACanvas = null, imgBCanvas = null;
+
+  const fileA = document.getElementById("fileA");
+  const fileB = document.getElementById("fileB");
+  const runSingleBtn = document.getElementById("runSingle");
+  const statusSingle = document.getElementById("statusSingle");
+
+  const qSlider = document.getElementById("qSlider"), qVal = document.getElementById("qVal");
+  const pSlider = document.getElementById("pSlider"), pVal = document.getElementById("pVal");
+  const tSlider = document.getElementById("tSlider"), tVal = document.getElementById("tVal");
+  qSlider.oninput = ()=> qVal.textContent = qSlider.value;
+  pSlider.oninput = ()=> pVal.textContent = (pSlider.value/100).toFixed(2);
+  tSlider.oninput = ()=> tVal.textContent = tSlider.value;
+
+  fileA.addEventListener("change", async ()=>{
+    if(!fileA.files[0]) return;
+    try{
+      const img = await fileToImage(fileA.files[0]);
+      imgACanvas = drawCover(img, SIZE);
+      drawTo(document.getElementById("cvA"), imgACanvas);
+      runSingleBtn.disabled = false;
+      statusSingle.textContent = "Image x loaded (" + fileA.files[0].name + ").";
+    }catch(e){ statusSingle.textContent = "Could not read that image file."; }
+  });
+  fileB.addEventListener("change", async ()=>{
+    if(!fileB.files[0]) return;
+    try{
+      const img = await fileToImage(fileB.files[0]);
+      imgBCanvas = drawCover(img, SIZE);
+      statusSingle.textContent = "Donor image loaded (" + fileB.files[0].name + ").";
+    }catch(e){ statusSingle.textContent = "Could not read that donor file."; }
+  });
+
+  runSingleBtn.addEventListener("click", async ()=>{
+    if(!imgACanvas) return;
+    runSingleBtn.disabled = true;
+    statusSingle.textContent = "Running Algorithms 1–2…";
+    try{
+      const donor = imgBCanvas || makeSyntheticDonor(SIZE, 777);
+      const q = parseInt(qSlider.value,10);
+      const p = parseInt(pSlider.value,10)/100;
+      const pctl = parseInt(tSlider.value,10);
+      const seedLock = document.getElementById("seedLock").checked;
+      const seed = seedLock ? 42 : Math.floor(Math.random()*1e9);
+
+      const r = await runPipeline(imgACanvas, donor, q, p, pctl, seed);
+
+      drawTo(document.getElementById("cvA"), r.decoded);
+      drawTo(document.getElementById("cvB"), r.tampered);
+      drawTo(document.getElementById("cvC"), maskToCanvas(r.gtMask, SIZE));
+      drawTo(document.getElementById("cvD"), maskToCanvas(r.predMask, SIZE));
+
+      document.getElementById("mPsnr").textContent = r.psnrVal.toFixed(2)+" dB";
+      document.getElementById("mBpp").textContent = r.bpp.toFixed(3);
+      document.getElementById("mPsnrT").textContent = r.psnrTamper.toFixed(2)+" dB";
+      document.getElementById("mPrec").textContent = r.precision.toFixed(3);
+      document.getElementById("mRec").textContent = r.recall.toFixed(3);
+      document.getElementById("mF1Iou").textContent = r.f1.toFixed(3)+" / "+r.iou.toFixed(3);
+
+      statusSingle.textContent = "Done.";
+    }catch(e){
+      console.error(e);
+      statusSingle.textContent = "Something went wrong running the pipeline. See console for details.";
+    }finally{
+      runSingleBtn.disabled = false;
+    }
+  });
+
+  // ---------- BATCH TAB ----------
+  const filesBatch = document.getElementById("filesBatch");
+  const runBatchBtn = document.getElementById("runBatch");
+  const statusBatch = document.getElementById("statusBatch");
+  const qSliderB = document.getElementById("qSliderB"), qValB = document.getElementById("qValB");
+  const pSliderB = document.getElementById("pSliderB"), pValB = document.getElementById("pValB");
+  const tSliderB = document.getElementById("tSliderB"), tValB = document.getElementById("tValB");
+  qSliderB.oninput = ()=> qValB.textContent = qSliderB.value;
+  pSliderB.oninput = ()=> pValB.textContent = (pSliderB.value/100).toFixed(2);
+  tSliderB.oninput = ()=> tValB.textContent = tSliderB.value;
+
+  let lastBatchResults = null;
+
+  filesBatch.addEventListener("change", ()=>{
+    runBatchBtn.disabled = filesBatch.files.length < 2;
+    statusBatch.textContent = filesBatch.files.length ? (filesBatch.files.length+" file(s) selected.") : "";
+  });
+
+  runBatchBtn.addEventListener("click", async ()=>{
+    const files = Array.from(filesBatch.files);
+    if(files.length < 2) return;
+    runBatchBtn.disabled = true;
+    const q = parseInt(qSliderB.value,10);
+    const p = parseInt(pSliderB.value,10)/100;
+    const pctl = parseInt(tSliderB.value,10);
+
+    try{
+      const canvases = [];
+      for(let i=0;i<files.length;i++){
+        statusBatch.textContent = `Loading image ${i+1}/${files.length}…`;
+        const img = await fileToImage(files[i]);
+        canvases.push(drawCover(img, SIZE));
+      }
+      const n = canvases.length;
+      const rows = [];
+      for(let i=0;i<n;i++){
+        statusBatch.textContent = `Processing ${i+1}/${n} (Algorithm 3)…`;
+        const donorIdx = (i + Math.floor(n/2) + 1) % n;
+        const r = await runPipeline(canvases[i], canvases[donorIdx], q, p, pctl, 1000+i);
+        rows.push({
+          idx: i+1, name: files[i].name, psnr: r.psnrVal, bpp: r.bpp,
+          psnrTamper: r.psnrTamper, f1: r.f1, iou: r.iou
+        });
+      }
+      lastBatchResults = { quality: q, patchFrac: p, threshold: pctl, rows };
+      renderBatchTable(rows);
+      statusBatch.textContent = `Done — ${n} images processed.`;
+      document.getElementById("batchResultsPanel").style.display = "block";
+    }catch(e){
+      console.error(e);
+      statusBatch.textContent = "Batch run failed. See console for details.";
+    }finally{
+      runBatchBtn.disabled = false;
+    }
+  });
+
+  function renderBatchTable(rows){
+    const tbody = document.getElementById("batchTbody");
+    tbody.innerHTML = "";
+    let sp=0, sb=0, spt=0, sf=0, si=0;
+    rows.forEach(r=>{
+      sp+=r.psnr; sb+=r.bpp; spt+=r.psnrTamper; sf+=r.f1; si+=r.iou;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${r.idx}</td><td>${r.name}</td><td>${r.psnr.toFixed(2)}</td><td>${r.bpp.toFixed(3)}</td>
+        <td>${r.psnrTamper.toFixed(2)}</td><td>${r.f1.toFixed(3)}</td><td>${r.iou.toFixed(3)}</td>`;
+      tbody.appendChild(tr);
+    });
+    const n = rows.length;
+    const avgTr = document.createElement("tr");
+    avgTr.className = "avg";
+    avgTr.innerHTML = `<td></td><td>Average (n=${n})</td><td>${(sp/n).toFixed(2)}</td><td>${(sb/n).toFixed(3)}</td>
+      <td>${(spt/n).toFixed(2)}</td><td>${(sf/n).toFixed(3)}</td><td>${(si/n).toFixed(3)}</td>`;
+    tbody.appendChild(avgTr);
+  }
+
+  function toCsv(rows){
+    const header = "idx,image,psnr_db,bitrate_bpp,psnr_after_tamper_db,f1,iou";
+    const lines = rows.map(r=>[r.idx,r.name,r.psnr.toFixed(2),r.bpp.toFixed(3),r.psnrTamper.toFixed(2),r.f1.toFixed(3),r.iou.toFixed(3)].join(","));
+    return [header, ...lines].join("\n");
+  }
+
+  async function trySave(filename, data){
+    try{
+      const downloads = await window.claude.use("downloads");
+      if(!downloads){ manualDownload(filename, data); return; }
+      await downloads.save({ filename, data });
+    }catch(e){
+      console.warn("downloads capability unavailable, falling back:", e);
+      manualDownload(filename, data);
+    }
+  }
+  function manualDownload(filename, data){
+    const blob = new Blob([data], {type:"text/plain"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+  }
+
+  document.getElementById("dlCsv").addEventListener("click", ()=>{
+    if(!lastBatchResults) return;
+    trySave("jpeg_ai_pilot_results.csv", toCsv(lastBatchResults.rows));
+  });
+  document.getElementById("dlJson").addEventListener("click", ()=>{
+    if(!lastBatchResults) return;
+    trySave("jpeg_ai_pilot_results.json", JSON.stringify(lastBatchResults, null, 2));
+  });
+
+})();
+</script>
+</body>
+</html>
